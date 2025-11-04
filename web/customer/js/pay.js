@@ -2,6 +2,7 @@ import { supabase } from '../../shared/js/supabase.js';
 import { showToast, rp, qs, initOfflineIndicator, showLoading, hideLoading, getPaymentMethodLabel, getServiceTypeLabel, formatDate, handleSupabaseError } from '../../shared/js/ui.js';
 
 // Initialize
+console.debug('[PAY] Module loaded - NO direct .from("payments") calls allowed, only RPC create_payment_with_code');
 initOfflineIndicator();
 
 // Check if payment code is in URL
@@ -71,17 +72,9 @@ checkCodeBtn.addEventListener('click', async () => {
     
     if (itemsError) throw itemsError;
     
-    // Check if already paid
-    const { data: payments, error: paymentsError } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('order_id', order.id)
-      .eq('status', 'success')
-      .maybeSingle();
-    
-    if (paymentsError && paymentsError.code !== 'PGRST116') {
-      throw paymentsError;
-    }
+    // Check if already paid - melalui status order saja, tidak query payments langsung
+    const alreadyPaid = ['paid', 'processing', 'completed'].includes(order.status);
+    const payments = alreadyPaid ? { status: 'success', created_at: order.updated_at } : null;
     
     // Render order
     renderOrder(order, items || [], payments);
@@ -197,26 +190,58 @@ submitPaymentBtn.addEventListener('click', async () => {
   try {
     // Upload to storage
     const fileName = `${currentOrder.id}_${Date.now()}.${file.name.split('.').pop()}`;
+    console.debug('[PAY] Uploading file to storage bucket: payment-proofs, fileName:', fileName);
+    
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('payment-proofs')
       .upload(fileName, file);
     
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('[PAY][STORAGE ERROR]', uploadError);
+      throw uploadError;
+    }
     
-    // Insert payment record
-    const { data: payment, error: paymentError } = await supabase
-      .from('payments')
-      .insert([{
-        order_id: currentOrder.id,
-        amount: currentOrder.total_amount,
-        method: currentOrder.payment_method,
-        status: 'pending',
-        proof_image_url: uploadData.path
-      }])
-      .select()
+    console.debug('[PAY] File uploaded successfully:', uploadData);
+    
+    // Get public URL for the uploaded file
+    const { data: { publicUrl } } = supabase.storage
+      .from('payment-proofs')
+      .getPublicUrl(fileName);
+    
+    console.debug('[PAY] Public URL generated:', publicUrl);
+    
+    // ✅ Panggil RPC create_payment_with_code (TIDAK insert langsung ke table payments)
+    console.debug('[PAY] Calling RPC: create_payment_with_code with params:', {
+      p_payment_code: currentOrder.payment_code,
+      p_method: currentOrder.payment_method,
+      p_proof_url: publicUrl
+    });
+    
+    const { data: rpcRes, error: rpcErr } = await supabase.rpc('create_payment_with_code', {
+      p_payment_code: currentOrder.payment_code.trim(),
+      p_method: currentOrder.payment_method,
+      p_proof_url: publicUrl || null
+    });
+    
+    if (rpcErr) {
+      console.error('[PAY][RPC ERROR] create_payment_with_code failed:', rpcErr);
+      throw rpcErr; // Jangan fallback insert ke table
+    }
+    
+    const paymentId = Array.isArray(rpcRes) ? rpcRes[0]?.id ?? rpcRes[0] : rpcRes;
+    console.debug('[PAY] RPC success, payment ID:', paymentId);
+    
+    // Refresh order data to get updated status
+    const { data: updatedOrder, error: refreshError } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', currentOrder.id)
       .single();
     
-    if (paymentError) throw paymentError;
+    if (!refreshError && updatedOrder) {
+      currentOrder = updatedOrder;
+      console.debug('[PAY] Order refreshed, new status:', updatedOrder.status);
+    }
     
     hideLoading();
     showToast('success', '✅ Bukti pembayaran berhasil diupload!');
