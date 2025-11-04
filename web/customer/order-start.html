@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Informasi Pemesanan - WarmindoGenz</title>
+  <link rel="stylesheet" href="../shared/css/base.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header>
+    <h1>🍜 WarmindoGenz</h1>
+    <p>Informasi Pemesanan</p>
+  </header>
+
+  <div class="container">
+    <div class="card" style="max-width: 600px; margin: 2rem auto;">
+      <h2 class="card-title">Mulai Pemesanan</h2>
+      <p class="card-description">Silakan isi informasi di bawah ini untuk memulai pemesanan</p>
+
+      <form id="order-form">
+        <div class="form-group">
+          <label for="guest_name" class="form-label">Nama</label>
+          <input 
+            type="text" 
+            id="guest_name" 
+            class="form-input" 
+            placeholder="Masukkan nama Anda"
+          >
+          <p class="form-help">Minimal Nama atau Kontak harus diisi</p>
+        </div>
+
+        <div class="form-group">
+          <label for="contact" class="form-label">Nomor Kontak</label>
+          <input 
+            type="tel" 
+            id="contact" 
+            class="form-input" 
+            placeholder="08xx-xxxx-xxxx"
+          >
+          <p class="form-help">WhatsApp atau nomor yang bisa dihubungi</p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label required">Tipe Layanan</label>
+          <div class="form-radio-group">
+            <label class="form-radio-label">
+              <input type="radio" name="service_type" value="dine_in" checked>
+              <span>🍽️ Makan di Tempat</span>
+            </label>
+            <label class="form-radio-label">
+              <input type="radio" name="service_type" value="takeaway">
+              <span>🥡 Bungkus</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group" id="table-group">
+          <label for="table_no" class="form-label required">Nomor Meja</label>
+          <select id="table_no" class="form-select">
+            <option value="">Memuat meja kosong...</option>
+          </select>
+          <p class="form-help">Pilih meja yang ingin Anda gunakan</p>
+        </div>
+
+        <div id="error-message" class="form-error" style="display: none; margin-bottom: 1rem;"></div>
+
+        <button type="submit" class="btn btn-primary btn-block btn-lg">
+          Lanjut ke Menu →
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="js/order-start.js"></script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout - WarmindoGenz</title>
+  <link rel="stylesheet" href="../shared/css/base.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header>
+    <h1>🍜 WarmindoGenz</h1>
+    <p>Review Pesanan Anda</p>
+  </header>
+
+  <div class="container" style="max-width: 800px;">
+    <!-- Customer Info -->
+    <div class="card mb-2">
+      <h2 class="card-title">📋 Informasi Pemesanan</h2>
+      <div id="customer-info"></div>
+    </div>
+
+    <!-- Order Items -->
+    <div class="card mb-2">
+      <h2 class="card-title">🛒 Item Pesanan</h2>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Menu</th>
+              <th style="text-align: center;">Qty</th>
+              <th style="text-align: right;">Harga</th>
+              <th style="text-align: right;">Subtotal</th>
+              <th style="text-align: center;">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="cart-items">
+            <tr>
+              <td colspan="5" style="text-align: center;">Memuat...</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" style="text-align: right; font-weight: 600;">Total:</td>
+              <td style="text-align: right; font-weight: 700; color: var(--primary); font-size: 1.125rem;" id="total-amount">Rp 0</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Payment Method -->
+    <div class="card mb-2">
+      <h2 class="card-title">💳 Metode Pembayaran</h2>
+      <div class="form-radio-group">
+        <label class="form-radio-label">
+          <input type="radio" name="payment_method" value="cash" checked>
+          <span>💵 Tunai</span>
+        </label>
+        <label class="form-radio-label">
+          <input type="radio" name="payment_method" value="qris">
+          <span>📱 QRIS</span>
+        </label>
+        <label class="form-radio-label">
+          <input type="radio" name="payment_method" value="transfer">
+          <span>🏦 Transfer Bank</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="card">
+      <button id="submit-order" class="btn btn-primary btn-block btn-lg">
+        🎉 Buat Pesanan
+      </button>
+      <button id="back-to-menu" class="btn btn-outline btn-block mt-2">
+        ← Kembali ke Menu
+      </button>
+    </div>
+  </div>
+
+  <script type="module" src="js/checkout.js"></script>
+</body>
+</html>

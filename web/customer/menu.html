@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Menu - WarmindoGenz</title>
+  <link rel="stylesheet" href="../shared/css/base.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <h1>🍜 Menu WarmindoGenz</h1>
+        <p>Pilih menu favorit Anda</p>
+      </div>
+      <button id="cart-btn" class="btn btn-primary" style="display: none; position: relative; font-size: 1.5rem; padding: 0.5rem 0.75rem;">
+        🛒
+        <span class="cart-count" id="cart-count" style="position: absolute; top: -8px; right: -8px; background: var(--danger); color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold;">0</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Chatbot Rekomendasi -->
+    <div class="chatbot-panel">
+      <h3>🤖 Rekomendasi Untuk Anda</h3>
+      <p id="chatbot-message">Memuat rekomendasi...</p>
+      <div id="chatbot-recommendation" class="chatbot-recommendation" style="display: none;">
+        <strong>💡 Saran Menu:</strong>
+        <p id="recommendation-text"></p>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <div class="form-group" style="margin-bottom: 0;">
+        <label for="category-filter" class="form-label">Filter Kategori</label>
+        <select id="category-filter" class="form-select">
+          <option value="">Semua Kategori</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 0;">
+        <label for="sort-select" class="form-label">Urutkan</label>
+        <select id="sort-select" class="form-select">
+          <option value="popular">Paling Populer</option>
+          <option value="newest">Terbaru</option>
+          <option value="price-asc">Harga: Rendah ke Tinggi</option>
+          <option value="price-desc">Harga: Tinggi ke Rendah</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Menu Grid -->
+    <div id="menu-grid" class="grid">
+      <p style="text-align: center; color: var(--text-secondary); grid-column: 1/-1;">
+        Memuat menu...
+      </p>
+    </div>
+  </div>
+
+  <script type="module" src="js/menu.js"></script>
+</body>
+</html>

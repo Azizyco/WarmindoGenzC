@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Struk Pesanan - WarmindoGenz</title>
+  <link rel="stylesheet" href="../shared/css/base.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header class="no-print">
+    <h1>🍜 WarmindoGenz</h1>
+    <p>Struk Pesanan Anda</p>
+  </header>
+
+  <div class="container">
+    <div class="receipt">
+      <div class="receipt-header">
+        <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">🍜 WarmindoGenz</h1>
+        <p style="color: var(--text-secondary);">Warung Mie Indomie Genz</p>
+      </div>
+
+      <!-- Payment Code -->
+      <div class="receipt-code" id="payment-code-display">
+        Memuat...
+      </div>
+
+      <!-- Order Info -->
+      <div class="receipt-section">
+        <div class="receipt-label">Nomor Pesanan</div>
+        <div class="receipt-value" id="order-id">-</div>
+      </div>
+
+      <div class="receipt-section">
+        <div class="receipt-label">Nomor Antrian</div>
+        <div class="receipt-value" style="font-size: 2rem; color: var(--primary);" id="queue-no">-</div>
+      </div>
+
+      <div class="receipt-section" id="customer-info-section">
+        <div class="receipt-label">Informasi Pelanggan</div>
+        <div id="customer-info"></div>
+      </div>
+
+      <!-- Order Items -->
+      <div class="receipt-section">
+        <div class="receipt-label">Item Pesanan</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Menu</th>
+                <th style="text-align: center;">Qty</th>
+                <th style="text-align: right;">Harga</th>
+                <th style="text-align: right;">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody id="order-items">
+              <tr>
+                <td colspan="4" style="text-align: center;">Memuat...</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3" style="text-align: right; font-weight: 600;">Total:</td>
+                <td style="text-align: right; font-weight: 700; color: var(--primary); font-size: 1.25rem;" id="total-amount">Rp 0</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div class="receipt-section">
+        <div class="receipt-label">Metode Pembayaran</div>
+        <div class="receipt-value" id="payment-method">-</div>
+      </div>
+
+      <div class="receipt-section">
+        <div class="receipt-label">Waktu Pemesanan</div>
+        <div class="receipt-value" id="order-time">-</div>
+      </div>
+
+      <!-- Actions -->
+      <div class="receipt-actions no-print">
+        <button id="pay-now-btn" class="btn btn-success btn-icon">
+          💳 Bayar Sekarang
+        </button>
+        <button id="print-btn" class="btn btn-secondary btn-icon">
+          🖨️ Cetak
+        </button>
+        <button id="share-wa-btn" class="btn btn-primary btn-icon">
+          📱 Bagikan WA
+        </button>
+      </div>
+
+      <div class="receipt-actions no-print" style="margin-top: 1rem;">
+        <a href="index.html" class="btn btn-outline btn-block">← Kembali ke Beranda</a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/receipt.js"></script>
+</body>
+</html>

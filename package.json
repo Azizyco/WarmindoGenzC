@@ -1,0 +1,12 @@
+{
+  "name": "warmindogenz-customer-app",
+  "version": "1.0.0",
+  "description": "Customer ordering app for WarmindoGenz",
+  "scripts": {
+    "dev": "cd web && python -m http.server 8000",
+    "serve": "cd web && npx serve -p 8000"
+  },
+  "keywords": ["supabase", "ordering", "restaurant"],
+  "author": "WarmindoGenz",
+  "license": "MIT"
+}

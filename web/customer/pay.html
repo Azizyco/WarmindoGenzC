@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pembayaran - WarmindoGenz</title>
+  <link rel="stylesheet" href="../shared/css/base.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header>
+    <h1>🍜 WarmindoGenz</h1>
+    <p>Portal Pembayaran</p>
+  </header>
+
+  <div class="container" style="max-width: 700px;">
+    <!-- Payment Code Input -->
+    <div class="card mb-2" id="code-input-section">
+      <h2 class="card-title">💳 Masukkan Kode Pembayaran</h2>
+      <p class="card-description">Masukkan kode pembayaran yang Anda terima dari struk pesanan</p>
+      
+      <div class="form-group">
+        <input 
+          type="text" 
+          id="payment-code-input" 
+          class="form-input" 
+          placeholder="Contoh: WMG-7F3K9C"
+          style="text-transform: uppercase; font-weight: 600; font-size: 1.125rem;"
+        >
+      </div>
+      
+      <button id="check-code-btn" class="btn btn-primary btn-block btn-lg">
+        🔍 Cari Pesanan
+      </button>
+    </div>
+
+    <!-- Order Details (Hidden initially) -->
+    <div id="order-details-section" style="display: none;">
+      <!-- Order Info -->
+      <div class="card mb-2">
+        <h2 class="card-title">📋 Detail Pesanan</h2>
+        <div id="order-info"></div>
+      </div>
+
+      <!-- Order Items -->
+      <div class="card mb-2">
+        <h3 style="margin-bottom: 1rem; font-weight: 600;">🛒 Item Pesanan</h3>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Menu</th>
+                <th style="text-align: center;">Qty</th>
+                <th style="text-align: right;">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody id="order-items">
+              <tr>
+                <td colspan="3" style="text-align: center;">Memuat...</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="2" style="text-align: right; font-weight: 600;">Total:</td>
+                <td style="text-align: right; font-weight: 700; color: var(--primary); font-size: 1.25rem;" id="total-amount">Rp 0</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- Payment Upload (for QRIS/Transfer) -->
+      <div class="card mb-2" id="payment-upload-section" style="display: none;">
+        <h3 style="margin-bottom: 1rem; font-weight: 600;">📤 Upload Bukti Pembayaran</h3>
+        <p class="card-description">
+          Silakan upload bukti transfer atau screenshot pembayaran QRIS Anda
+        </p>
+        
+        <div class="form-group">
+          <input 
+            type="file" 
+            id="payment-proof-input" 
+            class="form-input" 
+            accept="image/*"
+          >
+          <p class="form-help">Format: JPG, PNG (Max 5MB)</p>
+        </div>
+        
+        <button id="submit-payment-btn" class="btn btn-success btn-block btn-lg">
+          ✅ Submit Pembayaran
+        </button>
+      </div>
+
+      <!-- Payment Success / Cash Info -->
+      <div class="card mb-2" id="payment-status-section" style="display: none;">
+        <div id="payment-status-content"></div>
+      </div>
+
+      <!-- Actions -->
+      <div class="card">
+        <button id="print-receipt-btn" class="btn btn-secondary btn-block">
+          🖨️ Cetak Struk
+        </button>
+        <a href="index.html" class="btn btn-outline btn-block mt-2">← Kembali ke Beranda</a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/pay.js"></script>
+</body>
+</html>

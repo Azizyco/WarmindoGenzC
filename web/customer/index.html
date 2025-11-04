@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WarmindoGenz - Customer App</title>
+  <link rel="stylesheet" href="../shared/css/base.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    .hero {
+      text-align: center;
+      padding: 3rem 1rem;
+      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+      color: white;
+      margin-bottom: 2rem;
+      border-radius: 0 0 2rem 2rem;
+    }
+    
+    .hero h1 {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .hero p {
+      font-size: 1.125rem;
+      opacity: 0.9;
+    }
+    
+    .menu-options {
+      display: grid;
+      gap: 1.5rem;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    
+    .option-card {
+      background: white;
+      border-radius: 1rem;
+      padding: 2rem;
+      text-align: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: all 0.3s;
+      border: 2px solid transparent;
+    }
+    
+    .option-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+      border-color: var(--primary);
+    }
+    
+    .option-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+    
+    .option-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+    
+    .option-card p {
+      color: var(--text-secondary);
+      margin-bottom: 1.5rem;
+    }
+    
+    @media (min-width: 768px) {
+      .menu-options {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <h1>🍜 WarmindoGenz</h1>
+    <p>Selamat datang! Pilih layanan yang Anda butuhkan</p>
+  </div>
+
+  <div class="menu-options">
+    <div class="option-card">
+      <div class="option-icon">🛒</div>
+      <h2>Pesan</h2>
+      <p>Buat pesanan baru dan pilih menu favorit Anda</p>
+      <a href="order-start.html" class="btn btn-primary btn-block btn-lg">Mulai Pesan</a>
+    </div>
+
+    <div class="option-card">
+      <div class="option-icon">💳</div>
+      <h2>Bayar Pesanan</h2>
+      <p>Bayar pesanan Anda menggunakan kode pembayaran</p>
+      <a href="pay.html" class="btn btn-primary btn-block btn-lg">Bayar Sekarang</a>
+    </div>
+
+    <div class="option-card">
+      <div class="option-icon">📋</div>
+      <h2>Lihat Antrian</h2>
+      <p>Cek status antrian pesanan secara realtime</p>
+      <a href="queue.html" class="btn btn-primary btn-block btn-lg">Lihat Antrian</a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initOfflineIndicator } from '../shared/js/ui.js';
+    initOfflineIndicator();
+  </script>
+</body>
+</html>

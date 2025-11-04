@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Antrian - WarmindoGenz</title>
+  <link rel="stylesheet" href="../shared/css/base.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    .queue-header {
+      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+      color: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .queue-header h2 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .queue-header p {
+      opacity: 0.9;
+    }
+    
+    .queue-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+    
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 0.25rem;
+    }
+    
+    .stat-label {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+    
+    .queue-number {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    
+    .realtime-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--success);
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    
+    .realtime-dot {
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🍜 WarmindoGenz</h1>
+    <p>Papan Antrian Realtime</p>
+  </header>
+
+  <div class="container">
+    <div class="queue-header">
+      <h2>📋 Antrian Hari Ini</h2>
+      <p>Pantau status pesanan Anda secara realtime</p>
+    </div>
+
+    <div style="text-align: center;">
+      <div class="realtime-indicator">
+        <span class="realtime-dot"></span>
+        <span>Live Updates</span>
+      </div>
+    </div>
+
+    <div class="queue-stats">
+      <div class="stat-card">
+        <div class="stat-value" id="total-queue">0</div>
+        <div class="stat-label">Total Antrian</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="paid-count">0</div>
+        <div class="stat-label">Sudah Bayar</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="unpaid-count">0</div>
+        <div class="stat-label">Belum Bayar</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom: 1rem; font-weight: 600;">🔄 Status Antrian</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align: center;">Antrian</th>
+              <th>Nama</th>
+              <th>Layanan</th>
+              <th style="text-align: center;">Bayar</th>
+              <th style="text-align: center;">Status</th>
+              <th>Waktu</th>
+            </tr>
+          </thead>
+          <tbody id="queue-list">
+            <tr>
+              <td colspan="6" style="text-align: center;">Memuat antrian...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 2rem;">
+      <a href="index.html" class="btn btn-outline">← Kembali ke Beranda</a>
+    </div>
+  </div>
+
+  <script type="module" src="js/queue.js"></script>
+</body>
+</html>
