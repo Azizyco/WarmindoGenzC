@@ -15,6 +15,7 @@ let realtimeChannel = null;
 // Load queue
 async function loadQueue() {
   try {
+    console.debug('[QUEUE] Loading via view public.vw_queue_today');
     const { data: queue, error } = await supabase
       .from('vw_queue_today')
       .select('*')
@@ -26,8 +27,54 @@ async function loadQueue() {
     
   } catch (error) {
     console.error('Error loading queue:', error);
+    // Fallback bila view belum ada di DB (PGRST205: schema cache/view missing)
+    if (error?.code === 'PGRST205') {
+      console.warn('[QUEUE] View vw_queue_today tidak ditemukan. Menggunakan fallback query ke tabel orders.');
+      await loadQueueFromOrdersFallback();
+      return;
+    }
     queueList.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--error);">⚠️ Gagal memuat antrian</td></tr>';
     await handleSupabaseError(error, loadQueue);
+  }
+}
+
+// Fallback: Query langsung ke orders jika view belum tersedia
+async function loadQueueFromOrdersFallback() {
+  try {
+    console.debug('[QUEUE][FALLBACK] Loading directly from orders');
+    // Hitung awal hari (zona waktu lokal browser)
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const startIso = startOfDay.toISOString();
+    
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select('id, queue_no, guest_name, contact, service_type, table_no, status, created_at')
+      .gte('created_at', startIso)
+      .not('status', 'in', '("completed","canceled")')
+      .order('queue_no', { ascending: true })
+      .order('created_at', { ascending: true });
+    
+    if (error) throw error;
+    
+    const queue = (orders || []).map(o => ({
+      id: o.id,
+      queue_no: o.queue_no,
+      guest_name: o.guest_name,
+      contact: o.contact,
+      service_type: o.service_type,
+      table_no: o.table_no,
+      order_status: o.status,
+      // Anggap paid jika status sudah paid/processing/completed
+      is_paid: ['paid', 'processing', 'completed'].includes(o.status),
+      created_at: o.created_at,
+    }));
+    
+    renderQueue(queue);
+  } catch (fallbackError) {
+    console.error('[QUEUE][FALLBACK] Error loading from orders:', fallbackError);
+    queueList.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--error);">⚠️ Gagal memuat antrian</td></tr>';
+    await handleSupabaseError(fallbackError, loadQueueFromOrdersFallback);
   }
 }
 
