@@ -136,6 +136,7 @@ export function getPaymentMethodLabel(method) {
     cash: '💵 Tunai',
     qris: '📱 QRIS',
     transfer: '🏦 Transfer Bank',
+    ewallet: '📲 e-Wallet',
   };
   return labels[method] || method;
 }

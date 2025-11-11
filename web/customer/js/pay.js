@@ -2,7 +2,7 @@ import { supabase } from '../../shared/js/supabase.js';
 import { showToast, rp, qs, initOfflineIndicator, showLoading, hideLoading, getPaymentMethodLabel, getServiceTypeLabel, formatDate, handleSupabaseError } from '../../shared/js/ui.js';
 
 // Initialize
-console.debug('[PAY] Module loaded - NO direct .from("payments") calls allowed, only RPC create_payment_with_code');
+console.debug('[PAY] Module loaded - Upload proof to storage, then save URL to orders.proof_url (no payments RPC).');
 initOfflineIndicator();
 
 // Check if payment code is in URL
@@ -21,6 +21,8 @@ const checkCodeBtn = qs('#check-code-btn');
 const orderInfo = qs('#order-info');
 const orderItems = qs('#order-items');
 const totalAmount = qs('#total-amount');
+const paymentMethodInfoCard = qs('#payment-method-info-card');
+const paymentMethodInfo = qs('#payment-method-info');
 const paymentUploadSection = qs('#payment-upload-section');
 const paymentStatusSection = qs('#payment-status-section');
 const paymentStatusContent = qs('#payment-status-content');
@@ -29,6 +31,71 @@ const submitPaymentBtn = qs('#submit-payment-btn');
 const printReceiptBtn = qs('#print-receipt-btn');
 
 let currentOrder = null;
+let cachedPaymentSettings = null; // cache settings to avoid repeated fetch
+
+// Load payment settings from public.settings
+async function loadPaymentSettings() {
+  if (cachedPaymentSettings) return cachedPaymentSettings;
+  try {
+    const wantedKeys = ['payment.ewallet', 'payment.qris', 'payment.transfer'];
+    const { data, error } = await supabase
+      .from('settings')
+      .select('key, value, image_path, updated_at, updated_by')
+      .in('key', wantedKeys);
+    if (error) throw error;
+
+    const map = { ewallet: null, qris: null, transfer: null };
+    (data || []).forEach(row => {
+      let val = row?.value;
+      try {
+        if (val && typeof val === 'string') val = JSON.parse(val);
+      } catch (_) {
+        // keep as-is if not JSON
+      }
+
+      if (row.key === 'payment.ewallet') {
+        map.ewallet = { ...(val || {}), image_path: row.image_path || val?.image_path || null };
+      } else if (row.key === 'payment.qris') {
+        map.qris = { ...(val || {}), image_path: row.image_path || val?.image_path || null };
+      } else if (row.key === 'payment.transfer') {
+        map.transfer = { ...(val || {}), image_path: row.image_path || val?.image_path || null };
+      }
+    });
+
+    cachedPaymentSettings = map;
+    return map;
+  } catch (err) {
+    console.error('[PAY] Failed to load payment settings:', err);
+    return { ewallet: null, qris: null, transfer: null };
+  }
+}
+
+function getPublicAssetUrl(imagePath) {
+  if (!imagePath) return '/assets/no-image.png';
+  if (/^https?:\/\//i.test(imagePath)) return imagePath;
+  try {
+    // Default bucket guess: 'public-assets' → adjust as needed in Supabase
+    const { data } = supabase.storage.from('public-assets').getPublicUrl(imagePath);
+    return (data && data.publicUrl) || '/assets/no-image.png';
+  } catch (e) {
+    return '/assets/no-image.png';
+  }
+}
+
+function copyToClipboard(text) {
+  if (!text) return;
+  navigator.clipboard?.writeText(text).then(() => {
+    showToast('success', 'Tersalin ke clipboard');
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); showToast('success', 'Tersalin ke clipboard'); } catch (_) {}
+    document.body.removeChild(ta);
+  });
+}
 
 // Check payment code
 checkCodeBtn.addEventListener('click', async () => {
@@ -61,14 +128,18 @@ checkCodeBtn.addEventListener('click', async () => {
     
     currentOrder = order;
     
-    // Load order items
-    const { data: items, error: itemsError } = await supabase
-      .from('order_items')
-      .select(`
-        *,
-        menus (name)
-      `)
-      .eq('order_id', order.id);
+    // Load order items + settings
+    const [itemsRes, settingsMap] = await Promise.all([
+      supabase
+        .from('order_items')
+        .select(`
+          *,
+          menus (name)
+        `)
+        .eq('order_id', order.id),
+      loadPaymentSettings()
+    ]);
+    const { data: items, error: itemsError } = itemsRes;
     
     if (itemsError) throw itemsError;
     
@@ -77,7 +148,7 @@ checkCodeBtn.addEventListener('click', async () => {
     const payments = alreadyPaid ? { status: 'success', created_at: order.updated_at } : null;
     
     // Render order
-    renderOrder(order, items || [], payments);
+  renderOrder(order, items || [], payments, settingsMap);
     
     // Show order details
     codeInputSection.style.display = 'none';
@@ -93,7 +164,7 @@ checkCodeBtn.addEventListener('click', async () => {
 });
 
 // Render order
-function renderOrder(order, items, existingPayment) {
+function renderOrder(order, items, existingPayment, settingsMap) {
   // Order info
   const orderInfoHtml = [];
   orderInfoHtml.push(`<div style="display: grid; gap: 0.75rem;">`);
@@ -142,6 +213,8 @@ function renderOrder(order, items, existingPayment) {
         <p style="margin-top: 1rem; font-size: 0.875rem;">Waktu Pembayaran: ${formatDate(existingPayment.created_at)}</p>
       </div>
     `;
+    // Hide instructions when already paid
+    if (paymentMethodInfoCard) paymentMethodInfoCard.style.display = 'none';
   } else if (order.payment_method === 'cash') {
     // Cash payment
     paymentUploadSection.style.display = 'none';
@@ -154,11 +227,96 @@ function renderOrder(order, items, existingPayment) {
         <p style="font-size: 2rem; font-weight: 700; color: var(--primary); margin-top: 1rem;">${rp(order.total_amount)}</p>
       </div>
     `;
+    if (paymentMethodInfoCard) paymentMethodInfoCard.style.display = 'none';
   } else {
-    // QRIS/Transfer - show upload
-    paymentUploadSection.style.display = 'block';
+    // QRIS/Transfer - show upload (ewallet: info only)
+    const needsUpload = ['qris', 'transfer'].includes(order.payment_method);
+    paymentUploadSection.style.display = needsUpload ? 'block' : 'none';
     paymentStatusSection.style.display = 'none';
+
+    // Show dynamic instructions based on settings
+    if (paymentMethodInfoCard && paymentMethodInfo) {
+      paymentMethodInfo.innerHTML = renderPaymentInstructions(order.payment_method, settingsMap);
+      paymentMethodInfoCard.style.display = 'block';
+      // Wire copy buttons
+      document.querySelectorAll('[data-copy]').forEach(btn => {
+        btn.addEventListener('click', () => copyToClipboard(btn.getAttribute('data-copy')));
+      });
+    }
   }
+}
+
+function renderPaymentInstructions(method, settingsMap) {
+  const safe = (s) => (s == null ? '' : String(s));
+  const notConfigured = `
+    <div class="alert alert-warning" style="padding: .75rem 1rem; border-radius: .5rem; background: #fff7e6; border: 1px solid #ffe0a3; color: #8a6d3b;">
+      Pengaturan untuk metode <strong>${getPaymentMethodLabel(method)}</strong> belum dikonfigurasi. Silakan hubungi kasir.
+    </div>
+  `;
+
+  if (method === 'qris') {
+    const cfg = settingsMap?.qris;
+    if (!cfg) return notConfigured;
+    const imgUrl = getPublicAssetUrl(cfg.image_path);
+    const caption = cfg.caption || 'Scan QRIS berikut lalu unggah bukti pembayaran.';
+    return `
+      <div>
+        <p style="margin-bottom: .75rem; color: var(--text-secondary);">${safe(caption)}</p>
+        <div style="display:flex; justify-content:center;">
+          <img src="${imgUrl}" alt="QRIS" style="max-width: 260px; width: 100%; border: 1px solid #eee; border-radius: .5rem;" onerror="this.src='/assets/no-image.png'">
+        </div>
+        <div style="text-align:center; margin-top:.5rem;">
+          <a href="${imgUrl}" target="_blank" rel="noopener" class="btn btn-outline" style="display:inline-block;">Buka Gambar</a>
+        </div>
+      </div>
+    `;
+  }
+
+  if (method === 'transfer') {
+    const cfg = settingsMap?.transfer;
+    if (!cfg) return notConfigured;
+    const bank = safe(cfg.bank_name || 'Bank');
+    const acc = safe(cfg.account_no || '');
+    const name = safe(cfg.account_name || '');
+    return `
+      <div style="display:grid; gap:.5rem;">
+        <div><strong>Bank</strong><br>${bank}</div>
+        <div style="display:flex; align-items:center; gap:.5rem;">
+          <div style="flex:1;">
+            <strong>No. Rekening</strong><br>
+            <span style="font-size:1.25rem; font-weight:700; letter-spacing: .5px;">${acc}</span>
+          </div>
+          <button class="btn btn-outline" data-copy="${acc}">Salin</button>
+        </div>
+        <div><strong>Atas Nama</strong><br>${name}</div>
+        <div class="note" style="margin-top:.25rem; color: var(--text-secondary); font-size:.9rem;">Tambahkan berita/keterangan: <strong>Kode ${currentOrder?.payment_code || ''}</strong></div>
+      </div>
+    `;
+  }
+
+  if (method === 'ewallet') {
+    const cfg = settingsMap?.ewallet;
+    if (!cfg) return notConfigured;
+    const prov = safe(cfg.provider || 'e-Wallet');
+    const num = safe(cfg.number || '');
+    const name = safe(cfg.name || '');
+    return `
+      <div style="display:grid; gap:.5rem;">
+        <div><strong>Provider</strong><br>${prov}</div>
+        <div style="display:flex; align-items:center; gap:.5rem;">
+          <div style="flex:1;">
+            <strong>No. e-Wallet</strong><br>
+            <span style="font-size:1.25rem; font-weight:700; letter-spacing: .5px;">${num}</span>
+          </div>
+          <button class="btn btn-outline" data-copy="${num}">Salin</button>
+        </div>
+        <div><strong>Nama Akun</strong><br>${name}</div>
+      </div>
+    `;
+  }
+
+  // Default (unknown method)
+  return notConfigured;
 }
 
 // Submit payment
@@ -210,26 +368,17 @@ submitPaymentBtn.addEventListener('click', async () => {
     
     console.debug('[PAY] Public URL generated:', publicUrl);
     
-    // ✅ Panggil RPC create_payment_with_code (TIDAK insert langsung ke table payments)
-    console.debug('[PAY] Calling RPC: create_payment_with_code with params:', {
-      p_payment_code: currentOrder.payment_code,
-      p_method: currentOrder.payment_method,
+    // ✅ Simpan URL bukti via RPC (aman terhadap RLS): update_order_proof_url
+    console.debug('[PAY] Calling RPC update_order_proof_url for payment_code:', currentOrder.payment_code);
+    const { data: rpcData, error: rpcError } = await supabase.rpc('update_order_proof_url', {
+      p_payment_code: currentOrder.payment_code.trim(),
       p_proof_url: publicUrl
     });
-    
-    const { data: rpcRes, error: rpcErr } = await supabase.rpc('create_payment_with_code', {
-      p_payment_code: currentOrder.payment_code.trim(),
-      p_method: currentOrder.payment_method,
-      p_proof_url: publicUrl || null
-    });
-    
-    if (rpcErr) {
-      console.error('[PAY][RPC ERROR] create_payment_with_code failed:', rpcErr);
-      throw rpcErr; // Jangan fallback insert ke table
+    if (rpcError) {
+      console.error('[PAY][RPC ERROR] update_order_proof_url failed:', rpcError);
+      throw rpcError;
     }
-    
-    const paymentId = Array.isArray(rpcRes) ? rpcRes[0]?.id ?? rpcRes[0] : rpcRes;
-    console.debug('[PAY] RPC success, payment ID:', paymentId);
+    console.debug('[PAY] RPC update_order_proof_url success:', rpcData);
     
     // Refresh order data to get updated status
     const { data: updatedOrder, error: refreshError } = await supabase
@@ -244,7 +393,7 @@ submitPaymentBtn.addEventListener('click', async () => {
     }
     
     hideLoading();
-    showToast('success', '✅ Bukti pembayaran berhasil diupload!');
+  showToast('success', '✅ Bukti pembayaran berhasil diupload dan disimpan.');
     
     // Update UI
     paymentUploadSection.style.display = 'none';
@@ -253,7 +402,7 @@ submitPaymentBtn.addEventListener('click', async () => {
       <div style="text-align: center; padding: 2rem;">
         <div style="font-size: 4rem; margin-bottom: 1rem;">⏳</div>
         <h3 style="color: var(--warning); margin-bottom: 0.5rem;">Menunggu Verifikasi</h3>
-        <p style="color: var(--text-secondary);">Bukti pembayaran Anda sedang diverifikasi oleh staff kami</p>
+        <p style="color: var(--text-secondary);">Bukti pembayaran Anda telah tersimpan dan menunggu verifikasi staff</p>
         <p style="margin-top: 1rem; font-size: 0.875rem;">Anda akan menerima konfirmasi segera</p>
       </div>
     `;
