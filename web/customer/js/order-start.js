@@ -23,26 +23,54 @@ serviceTypeRadios.forEach(radio => {
   });
 });
 
-// Load free tables
+// Load free tables from public.tables (status = 'empty')
 async function loadFreeTables() {
   try {
     tableSelect.innerHTML = '<option value="">Memuat...</option>';
-    
-    const { data, error } = await supabase.rpc('get_free_tables', { max_table: 10 });
-    
-    if (error) throw error;
-    
-    if (data && data.length > 0) {
+    // Ambil meja kosong dari tabel baru: public.tables
+    const { data, error } = await supabase
+      .from('tables')
+      .select('label, status, capacity')
+      .eq('status', 'empty')
+      .order('label', { ascending: true });
+
+    if (error) {
+      console.error('[TABLES] select error:', error);
+      throw error;
+    }
+
+    console.debug('[TABLES] empty tables fetched:', data);
+
+    if (Array.isArray(data) && data.length > 0) {
       tableSelect.innerHTML = '<option value="">Pilih nomor meja</option>';
       data.forEach(row => {
         const option = document.createElement('option');
-        option.value = row.table_no;
-        option.textContent = `Meja ${row.table_no}`;
+        option.value = row.label; // simpan label meja
+        option.textContent = `Meja ${row.label}${row.capacity ? ` · ${row.capacity} org` : ''}`;
         tableSelect.appendChild(option);
       });
     } else {
-      tableSelect.innerHTML = '<option value="">Tidak ada meja kosong</option>';
-      showToast('warning', 'Mohon maaf, saat ini semua meja sedang terisi');
+      // Fallback via existing RPC (RLS-safe)
+      console.debug('[TABLES] direct select returned 0 rows, trying RPC get_free_tables...');
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('get_free_tables', { p_limit: 10 });
+      if (rpcErr) {
+        console.error('[TABLES][RPC] get_free_tables error:', rpcErr);
+        tableSelect.innerHTML = '<option value="">Tidak ada meja kosong</option>';
+        showToast('warning', 'Mohon maaf, saat ini semua meja sedang terisi');
+      } else if (Array.isArray(rpcData) && rpcData.length > 0) {
+        tableSelect.innerHTML = '<option value="">Pilih nomor meja</option>';
+        rpcData.forEach(row => {
+          const option = document.createElement('option');
+          const label = row.label || row.table_no;
+          const cap = row.capacity || row.cap || null;
+          option.value = label;
+          option.textContent = `Meja ${label}${cap ? ` · ${cap} org` : ''}`;
+          tableSelect.appendChild(option);
+        });
+      } else {
+        tableSelect.innerHTML = '<option value="">Tidak ada meja kosong</option>';
+        showToast('warning', 'Mohon maaf, saat ini semua meja sedang terisi');
+      }
     }
   } catch (error) {
     console.error('Error loading tables:', error);

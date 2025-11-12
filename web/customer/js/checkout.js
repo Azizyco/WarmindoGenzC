@@ -135,6 +135,23 @@ submitBtn.addEventListener('click', async () => {
       .single();
     
     if (orderError) throw orderError;
+
+    // If dine-in and a table is selected, occupy the table via RPC
+    if (preOrder.service_type === 'dine_in' && preOrder.table_no) {
+      try {
+        const { error: occupyErr } = await supabase.rpc('occupy_table_for_order', {
+          p_table_label: preOrder.table_no,
+          p_order_id: order.id,
+          p_reason: 'order placed',
+          p_actor_id: null
+        });
+        if (occupyErr) throw occupyErr;
+      } catch (occErr) {
+        console.warn('[CHECKOUT] Failed to occupy table:', occErr);
+        // Tidak menggagalkan order; beritahu user agar kasir bantu update
+        showToast('warning', 'Pesanan dibuat, namun status meja belum diperbarui. Mohon konfirmasi ke kasir.');
+      }
+    }
     
     // Insert order items
     const itemsPayload = cart.map(item => ({

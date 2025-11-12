@@ -184,15 +184,23 @@ function renderOrder(order, items, existingPayment, settingsMap) {
   if (items.length === 0) {
     orderItems.innerHTML = '<tr><td colspan="3" style="text-align: center;">Tidak ada item</td></tr>';
   } else {
+    const safeNum = (v) => {
+      if (typeof v === 'number' && isFinite(v)) return v;
+      const n = parseFloat(v);
+      return Number.isFinite(n) ? n : 0;
+    };
+
     orderItems.innerHTML = items.map(item => {
       const menuName = item.menus?.name || 'Menu Tidak Diketahui';
-      const subtotal = item.price * item.quantity;
+      const price = safeNum(item.unit_price ?? item.price);
+      const quantity = safeNum(item.qty ?? item.quantity);
+      const subtotal = price * quantity;
       
       return `
         <tr>
           <td>${menuName}</td>
-          <td style="text-align: center;">${item.quantity}</td>
-          <td style="text-align: right;">${rp(subtotal)}</td>
+          <td style=\"text-align: center;\">${quantity}</td>
+          <td style=\"text-align: right;\">${rp(subtotal)}</td>
         </tr>
       `;
     }).join('');
