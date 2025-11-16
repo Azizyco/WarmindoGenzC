@@ -37,9 +37,6 @@ const categoryFilter = qs('#category-filter');
 const sortSelect = qs('#sort-select');
 const cartBtn = qs('#cart-btn');
 const cartCount = qs('#cart-count');
-const chatbotMessage = qs('#chatbot-message');
-const chatbotRecommendation = qs('#chatbot-recommendation');
-const recommendationText = qs('#recommendation-text');
 
 // Load data
 async function init() {
@@ -77,9 +74,6 @@ async function init() {
       categoryFilter.appendChild(option);
     });
     
-    // Show chatbot recommendation
-    showChatbotRecommendation();
-    
     // Render menus
     renderMenus();
     
@@ -92,31 +86,6 @@ async function init() {
   }
 }
 
-// Chatbot recommendation (rule-based)
-function showChatbotRecommendation() {
-  const hour = new Date().getHours();
-  let recommendation = '';
-  
-  if (hour >= 6 && hour < 10) {
-    recommendation = 'Selamat pagi! Coba menu sarapan kami seperti Nasi Goreng atau Mie Goreng untuk memulai hari Anda! ☀️';
-  } else if (hour >= 10 && hour < 15) {
-    recommendation = 'Sudah waktunya makan siang! Kami rekomendasikan menu favorit seperti Ayam Geprek atau Soto Ayam. 🍗';
-  } else if (hour >= 15 && hour < 18) {
-    recommendation = 'Sore hari cocoknya ngemil! Coba Pisang Goreng atau Teh Hangat sebagai teman santai. 🍵';
-  } else {
-    recommendation = 'Malam ini, nikmati menu spesial kami! Jangan lewatkan Rendang atau menu favorit lainnya. 🌙';
-  }
-  
-  // Add hot items
-  if (allMenus.length > 0) {
-    const hotItems = allMenus.slice(0, 3).map(m => m.name).join(', ');
-    recommendation += `\n\n🔥 Menu Populer: ${hotItems}`;
-  }
-  
-  chatbotMessage.style.display = 'none';
-  recommendationText.textContent = recommendation;
-  chatbotRecommendation.style.display = 'block';
-}
 
 // Render menus
 function renderMenus() {
@@ -225,6 +194,194 @@ cartBtn.addEventListener('click', () => {
 categoryFilter.addEventListener('change', renderMenus);
 sortSelect.addEventListener('change', renderMenus);
 
+// ============================================
+// CHATBOT GEMINI AI
+// ============================================
+// Gunakan Supabase Functions client agar URL dan header selalu benar
+
+// DOM Elements
+const chatWidget = qs('#chat-widget');
+const chatToggle = qs('#chat-toggle');
+const chatClose = qs('#chat-close');
+const chatMessages = qs('#chat-messages');
+const chatForm = qs('#chat-form');
+const chatInput = qs('#chat-input');
+const chatSendBtn = qs('#chat-send');
+const chatSendIcon = qs('#chat-send-icon');
+
+let isChatLoading = false;
+
+// Append message bubble
+function appendChatMessage(text, role = 'bot') {
+  if (!chatMessages) return;
+  
+  const messageDiv = document.createElement('div');
+  messageDiv.style.display = 'flex';
+  messageDiv.style.gap = '8px';
+  
+  if (role === 'user') {
+    messageDiv.style.flexDirection = 'row-reverse';
+  }
+  
+  // Avatar
+  const avatar = document.createElement('div');
+  avatar.style.width = '32px';
+  avatar.style.height = '32px';
+  avatar.style.borderRadius = '50%';
+  avatar.style.display = 'flex';
+  avatar.style.alignItems = 'center';
+  avatar.style.justifyContent = 'center';
+  avatar.style.flexShrink = '0';
+  avatar.style.fontSize = '18px';
+  
+  if (role === 'bot') {
+    avatar.style.background = 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)';
+    avatar.innerHTML = '<span>🤖</span>';
+  } else {
+    avatar.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
+    avatar.innerHTML = '<span>👤</span>';
+  }
+  
+  // Bubble
+  const bubble = document.createElement('div');
+  bubble.style.maxWidth = '80%';
+  bubble.style.padding = '12px';
+  bubble.style.borderRadius = '12px';
+  bubble.style.fontSize = '14px';
+  bubble.style.lineHeight = '1.5';
+  bubble.style.whiteSpace = 'pre-wrap';
+  bubble.style.wordBreak = 'break-word';
+  
+  if (role === 'bot') {
+    bubble.style.background = 'white';
+    bubble.style.color = '#374151';
+    bubble.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+  } else {
+    bubble.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
+    bubble.style.color = 'white';
+  }
+  
+  bubble.textContent = text;
+  
+  messageDiv.appendChild(avatar);
+  messageDiv.appendChild(bubble);
+  chatMessages.appendChild(messageDiv);
+  
+  // Scroll to bottom
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Toggle chat widget
+function toggleChat() {
+  if (!chatWidget || !chatToggle) return;
+  
+  const isOpen = chatWidget.style.display === 'block';
+  
+  if (isOpen) {
+    chatWidget.style.display = 'none';
+    chatToggle.style.display = 'flex';
+  } else {
+    chatWidget.style.display = 'block';
+    chatToggle.style.display = 'none';
+    chatInput?.focus();
+  }
+}
+
+// Send message to Gemini
+async function sendChatMessage(message) {
+  if (!message.trim() || isChatLoading) return;
+  
+  const userMessage = message.trim();
+  
+  // Display user message
+  appendChatMessage(userMessage, 'user');
+  
+  // Clear input
+  if (chatInput) chatInput.value = '';
+  
+  // Set loading state
+  isChatLoading = true;
+  if (chatSendIcon) chatSendIcon.textContent = '⏳';
+  if (chatSendBtn) chatSendBtn.disabled = true;
+  
+  // Show typing indicator
+  appendChatMessage('Mengetik...', 'bot');
+  
+  try {
+    console.debug('[CHAT] Sending message to Gemini API via Supabase Function...');
+
+    const { data, error } = await supabase.functions.invoke('chat-rekomendasi', {
+      body: {
+        message: userMessage,
+        limit: 20
+      }
+    });
+
+    if (error) {
+      throw new Error(error.message || 'Function invocation failed');
+    }
+
+    const reply = data?.reply || 'Maaf, saya tidak bisa memberikan jawaban saat ini.';
+    
+    console.debug('[CHAT] Received reply from Gemini');
+    
+    // Remove typing indicator
+    if (chatMessages && chatMessages.lastChild) {
+      chatMessages.removeChild(chatMessages.lastChild);
+    }
+    
+    // Display bot reply
+    appendChatMessage(reply, 'bot');
+    
+  } catch (error) {
+    console.error('[CHAT] Error:', error);
+    
+    // Remove typing indicator
+    if (chatMessages && chatMessages.lastChild) {
+      chatMessages.removeChild(chatMessages.lastChild);
+    }
+    
+    // Display error message
+    appendChatMessage(
+      'Maaf, terjadi kesalahan saat menghubungi asisten. Pastikan Edge Function sudah di-deploy dengan benar.',
+      'bot'
+    );
+    
+    showToast('error', 'Gagal menghubungi chatbot');
+  } finally {
+    // Reset loading state
+    isChatLoading = false;
+    if (chatSendIcon) chatSendIcon.textContent = 'Kirim';
+    if (chatSendBtn) chatSendBtn.disabled = false;
+  }
+}
+
+// Initialize chatbot
+function initChatbot() {
+  if (!chatWidget || !chatToggle) {
+    console.warn('[CHAT] Chat elements not found');
+    return;
+  }
+  
+  console.debug('[CHAT] Initializing chatbot...');
+  
+  // Toggle button click
+  chatToggle.addEventListener('click', toggleChat);
+  
+  // Close button click
+  chatClose?.addEventListener('click', toggleChat);
+  
+  // Form submit
+  chatForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const message = chatInput?.value || '';
+    sendChatMessage(message);
+  });
+  
+  console.debug('[CHAT] Chatbot initialized successfully');
+}
+
 // Initialize
 init();
 updateCartBadge();
+initChatbot();
