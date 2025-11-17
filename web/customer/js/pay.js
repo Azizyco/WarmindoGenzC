@@ -71,14 +71,25 @@ async function loadPaymentSettings() {
 }
 
 function getPublicAssetUrl(imagePath) {
-  if (!imagePath) return '/assets/no-image.png';
+  // Fallback relatif dari pay.html (web/customer/pay.html)
+  const fallback = './img/no-image.png';
+  if (!imagePath) return fallback;
+
+  // Jika sudah berupa URL penuh dari Supabase atau host lain, pakai apa adanya
   if (/^https?:\/\//i.test(imagePath)) return imagePath;
+
+  // Jika hanya path (mis. "qris/....png"), biarkan Supabase Storage yang membentuk URL
+  // Pastikan nama bucket di sini sama dengan bucket tempat QRIS disimpan.
   try {
-    // Default bucket guess: 'public-assets' → adjust as needed in Supabase
-    const { data } = supabase.storage.from('public-assets').getPublicUrl(imagePath);
-    return (data && data.publicUrl) || '/assets/no-image.png';
+	const { data, error } = supabase.storage.from('payment-config').getPublicUrl(imagePath);
+    if (error) {
+      console.error('[PAY] getPublicUrl error:', error);
+      return fallback;
+    }
+    return (data && data.publicUrl) || fallback;
   } catch (e) {
-    return '/assets/no-image.png';
+    console.error('[PAY] getPublicAssetUrl exception:', e);
+    return fallback;
   }
 }
 
@@ -271,7 +282,7 @@ function renderPaymentInstructions(method, settingsMap) {
       <div>
         <p style="margin-bottom: .75rem; color: var(--text-secondary);">${safe(caption)}</p>
         <div style="display:flex; justify-content:center;">
-          <img src="${imgUrl}" alt="QRIS" style="max-width: 260px; width: 100%; border: 1px solid #eee; border-radius: .5rem;" onerror="this.src='/assets/no-image.png'">
+          <img src="${imgUrl}" alt="QRIS" style="max-width: 260px; width: 100%; border: 1px solid #eee; border-radius: .5rem;" onerror="this.src='./img/no-image.png'">
         </div>
         <div style="text-align:center; margin-top:.5rem;">
           <a href="${imgUrl}" target="_blank" rel="noopener" class="btn btn-outline" style="display:inline-block;">Buka Gambar</a>
