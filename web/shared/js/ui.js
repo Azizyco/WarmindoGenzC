@@ -113,21 +113,26 @@ export function formatTime(dateString) {
   }).format(date);
 }
 
-// Status badge helper
+// Status & payment badge helpers
 export function getStatusBadge(status) {
-  const statusMap = {
-    placed: { text: 'Dipesan', class: 'badge-placed' },
-    paid: { text: 'Dibayar', class: 'badge-paid' },
-    confirmed: { text: 'Dikonfirmasi', class: 'badge-confirmed' },
-    prep: { text: 'Diproses', class: 'badge-prep' },
-    ready: { text: 'Siap', class: 'badge-ready' },
-    served: { text: 'Disajikan', class: 'badge-served' },
-    completed: { text: 'Selesai', class: 'badge-completed' },
-    canceled: { text: 'Dibatalkan', class: 'badge-canceled' },
+  const map = {
+    placed:    { text: 'Dipesan',      cls: 'badge-placed' },
+    paid:      { text: 'Lunas',        cls: 'badge-paid' },
+    confirmed: { text: 'Dikonfirmasi', cls: 'badge-confirmed' },
+    prep:      { text: 'Disiapkan',    cls: 'badge-prep' },
+    ready:     { text: 'Siap Saji',    cls: 'badge-ready' },
+    served:    { text: 'Tersaji',      cls: 'badge-served' },
+    completed: { text: 'Selesai',      cls: 'badge-completed' },
+    canceled:  { text: 'Dibatalkan',   cls: 'badge-canceled' },
   };
-  
-  const info = statusMap[status] || { text: status, class: 'badge-default' };
-  return `<span class="badge ${info.class}">${info.text}</span>`;
+  const s = map[status] || { text: status, cls: 'badge-default' };
+  return `<span class="badge ${s.cls}">${s.text}</span>`;
+}
+
+export function getPaymentBadge(isPaid) {
+  return isPaid
+    ? '<span class="badge badge-paid">Lunas</span>'
+    : '<span class="badge badge-placed">Belum Bayar</span>';
 }
 
 // Payment method label

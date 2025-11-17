@@ -1,5 +1,5 @@
 import { supabase } from '../../shared/js/supabase.js';
-import { showToast, qs, initOfflineIndicator, showLoading, hideLoading, getStatusBadge, getServiceTypeLabel, formatTime, handleSupabaseError } from '../../shared/js/ui.js';
+import { showToast, qs, initOfflineIndicator, showLoading, hideLoading, getStatusBadge, getPaymentBadge, getServiceTypeLabel, formatTime, handleSupabaseError } from '../../shared/js/ui.js';
 
 // Initialize
 initOfflineIndicator();
@@ -7,7 +7,7 @@ initOfflineIndicator();
 // DOM Elements
 const queueList = qs('#queue-list');
 const totalQueue = qs('#total-queue');
-const paidCount = qs('#paid-count');
+  const paidCount = qs('#paid-count');
 const unpaidCount = qs('#unpaid-count');
 
 let realtimeChannel = null;
@@ -66,7 +66,7 @@ async function loadQueueFromOrdersFallback() {
       table_no: o.table_no,
       order_status: o.status,
       // Anggap paid jika status sudah paid/processing/completed
-      is_paid: ['paid', 'processing', 'completed'].includes(o.status),
+      is_paid: ['paid', 'processing', 'completed', 'confirmed'].includes(o.status),
       created_at: o.created_at,
     }));
     
@@ -88,10 +88,11 @@ function renderQueue(queue) {
     return;
   }
   
-  // Calculate stats
+  // Calculate stats (treat confirmed as already paid)
   totalQueue.textContent = queue.length;
-  paidCount.textContent = queue.filter(q => q.is_paid).length;
-  unpaidCount.textContent = queue.filter(q => !q.is_paid).length;
+  const paidList = queue.filter(q => q.is_paid || q.order_status === 'confirmed' || q.status === 'confirmed');
+  paidCount.textContent = paidList.length;
+  unpaidCount.textContent = queue.length - paidList.length;
   
   // Render table
   queueList.innerHTML = queue.map(item => {
@@ -100,11 +101,9 @@ function renderQueue(queue) {
     const serviceLabel = item.service_type === 'dine_in' 
       ? `🍽️ Meja ${item.table_no || '-'}` 
       : '🥡 Bungkus';
-    const isPaid = item.is_paid;
-    const paymentBadge = isPaid 
-      ? '<span class="badge badge-paid">Lunas</span>' 
-      : '<span class="badge badge-placed">Belum Bayar</span>';
-    const statusBadge = getStatusBadge(item.order_status);
+    const isPaid = item.is_paid || item.order_status === 'confirmed' || item.status === 'confirmed';
+    const paymentBadge = getPaymentBadge(isPaid);
+    const statusBadge = getStatusBadge(item.order_status ?? item.status);
     const time = formatTime(item.created_at);
     
     return `
