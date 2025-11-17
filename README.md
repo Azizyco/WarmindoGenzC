@@ -9,21 +9,6 @@ Aplikasi pemesanan pelanggan untuk **WarmindoGenz** (Warung Mie Indomie Genz) di
 2. **💳 Bayar Pesanan** - Bayar menggunakan kode pembayaran
 3. **📋 Lihat Antrian** - Pantau antrian realtime
 
-### Fitur Lengkap:
-- ✅ Pra-pemesanan (nama, kontak, layanan, pilih meja kosong)
-- ✅ Menu dengan gambar, sortir, filter kategori
-- ✅ Chatbot rekomendasi sederhana (rule-based)
-- ✅ Keranjang belanja dengan localStorage
-- ✅ Checkout dan pilih metode pembayaran (Tunai/QRIS/Transfer)
-- ✅ Kode pembayaran unik (WMG-XXXXXX)
-- ✅ Nomor antrian harian otomatis
-- ✅ Upload bukti pembayaran
-- ✅ Struk digital (cetak, share WhatsApp)
-- ✅ Papan antrian publik realtime
-- ✅ Offline indicator
-- ✅ Mobile-first responsive design
-
-
 
 ---
 
