@@ -248,8 +248,8 @@ function renderOrder(order, items, existingPayment, settingsMap) {
     `;
     if (paymentMethodInfoCard) paymentMethodInfoCard.style.display = 'none';
   } else {
-    // QRIS/Transfer - show upload (ewallet: info only)
-    const needsUpload = ['qris', 'transfer'].includes(order.payment_method);
+    // Non-cash methods - show upload (QRIS/Transfer/e-Wallet)
+    const needsUpload = ['qris', 'transfer', 'ewallet'].includes(order.payment_method);
     paymentUploadSection.style.display = needsUpload ? 'block' : 'none';
     paymentStatusSection.style.display = 'none';
 

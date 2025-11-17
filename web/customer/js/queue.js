@@ -90,7 +90,9 @@ function renderQueue(queue) {
   
   // Calculate stats (treat confirmed as already paid)
   totalQueue.textContent = queue.length;
-  const paidList = queue.filter(q => q.is_paid || q.order_status === 'confirmed' || q.status === 'confirmed');
+  // Bayar = "Lunas" jika status order sudah masuk fase setelah dipesan
+  const paidStatuses = ['paid', 'confirmed', 'prep', 'ready', 'served', 'completed'];
+  const paidList = queue.filter(q => paidStatuses.includes(q.order_status) || paidStatuses.includes(q.status));
   paidCount.textContent = paidList.length;
   unpaidCount.textContent = queue.length - paidList.length;
   
@@ -101,7 +103,9 @@ function renderQueue(queue) {
     const serviceLabel = item.service_type === 'dine_in' 
       ? `🍽️ Meja ${item.table_no || '-'}` 
       : '🥡 Bungkus';
-    const isPaid = item.is_paid || item.order_status === 'confirmed' || item.status === 'confirmed';
+    const paidStatusesRow = ['paid', 'confirmed', 'prep', 'ready', 'served', 'completed'];
+    const statusForPay = item.order_status ?? item.status;
+    const isPaid = paidStatusesRow.includes(statusForPay);
     const paymentBadge = getPaymentBadge(isPaid);
     const statusBadge = getStatusBadge(item.order_status ?? item.status);
     const time = formatTime(item.created_at);
