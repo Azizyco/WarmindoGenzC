@@ -23,95 +23,38 @@ Aplikasi pemesanan pelanggan untuk **WarmindoGenz** (Warung Mie Indomie Genz) di
 - ✅ Offline indicator
 - ✅ Mobile-first responsive design
 
----
 
-## 🚀 Setup & Installation
-
-### 1. Prerequisites
-
-- Akun **Supabase** (gratis: https://supabase.com)
-- Web server atau static hosting (Netlify, Vercel, GitHub Pages, dll)
-- Browser modern dengan JavaScript enabled
-
-### 2. Database Setup
-
-1. Login ke **Supabase Dashboard**
-2. Buka **SQL Editor**
-3. Copy seluruh isi file `database-setup.sql` dan jalankan
-4. Tunggu hingga semua query selesai dieksekusi
-
-### 3. Storage Setup
-
-1. Buka **Storage** di Supabase Dashboard
-2. Klik **New Bucket**
-3. Nama bucket: `payment-proofs`
-4. Set sebagai **Private**
-5. Klik **Create Bucket**
-
-### 4. Configure Supabase Client
-
-1. Di Supabase Dashboard, buka **Settings > API**
-2. Copy **Project URL** dan **anon/public key**
-3. Edit file `web/shared/js/supabase.js`:
-
-```javascript
-const SUPABASE_URL = 'https://your-project.supabase.co'; // Ganti dengan URL Anda
-const SUPABASE_ANON_KEY = 'your-anon-key-here'; // Ganti dengan anon key Anda
-```
-
-### 5. Deploy
-
-**Option A: Local Testing**
-```bash
-cd "d:\VSCODE (Program)\Customer App\web"
-python -m http.server 8000
-# Atau gunakan: npx serve
-# Buka: http://localhost:8000/customer/
-```
-
-**Option B: Netlify**
-1. Drag & drop folder `web` ke Netlify
-2. Set base directory: `customer`
-3. Done!
-
-**Option C: Vercel**
-```bash
-cd "d:\VSCODE (Program)\Customer App\web"
-vercel
-```
-
-**Option D: GitHub Pages**
-1. Push folder `web` ke GitHub repo
-2. Enable GitHub Pages di settings
-3. Set folder: `/web/customer`
 
 ---
 
 ## 📁 Struktur Project
 
 ```
-/web
-  /shared
-    /js
-      supabase.js          # Supabase client init
+index.html                 # (Opsional) Landing jika root web/ dijadikan document root
+
+web/
+  shared/
+    js/
+      supabase.js          # Supabase client init (CDN supabase-js v2)
       ui.js                # Helper functions & UI utilities
-    /css
+    css/
       base.css             # Base styling (responsive, mobile-first)
-  /customer
-    index.html             # Landing page (3 options)
-    order-start.html       # Pra-pemesanan (info & pilih meja)
+
+  customer/                # Frontend utama untuk pelanggan (set ini sebagai web root di hosting)
+    index.html             # Landing page (3 opsi utama)
+    order-start.html       # Pra-pemesanan (info & pilih meja dari tabel "tables")
     menu.html              # Daftar menu + chatbot + filter/sort
-    checkout.html          # Review pesanan + pilih payment method
+    checkout.html          # Review pesanan + pilih metode pembayaran (cash/QRIS/transfer/e-wallet)
     receipt.html           # Struk + payment code + actions
-    pay.html               # Portal pembayaran (input code + upload)
+    pay.html               # Portal pembayaran (input kode + instruksi bayar dinamis)
     queue.html             # Papan antrian realtime
-    /js
-      order-start.js       # Logic untuk order-start.html
-      menu.js              # Logic untuk menu.html
-      checkout.js          # Logic untuk checkout.html
-      receipt.js           # Logic untuk receipt.html
-      pay.js               # Logic untuk pay.html
-      queue.js             # Logic untuk queue.html
+    js/
+      order-start.js       # Logic pra-pemesanan + load meja kosong (tables/get_free_tables)
+      menu.js              # Logic menu & keranjang
+      checkout.js          # Buat orders + order_items, pilih metode pembayaran
+      receipt.js           # Tampilkan struk & navigasi bayar
+      pay.js               # Tampilkan detail order + instruksi pembayaran + upload bukti (proof_url)
+      queue.js             # Tampilkan papan antrian realtime
 ```
 
 ---
@@ -128,22 +71,30 @@ Landing Page → Order Start → Menu → Checkout → Receipt
 ```
 
 **Detail:**
-1. **Order Start**: Input nama/kontak, pilih layanan (dine-in/takeaway), pilih meja kosong (jika dine-in)
-2. **Menu**: Browse menu dengan gambar, filter kategori, sort, chatbot rekomendasi, tambah ke keranjang
-3. **Checkout**: Review keranjang, pilih metode bayar (cash/qris/transfer), submit order
-4. **Receipt**: Tampilkan struk + payment code + nomor antrian, tombol bayar/cetak/share
+1. **Order Start** (`order-start.html`): Input nama/kontak, pilih layanan (dine-in/takeaway). Jika dine-in, aplikasi memuat meja kosong dari `public.tables` (status `empty`) atau RPC `get_free_tables`, lalu menyimpan pilihan ke `pre_order.table_no`.
+2. **Menu** (`menu.html`): Browse menu dengan gambar, filter kategori, sort, chatbot rekomendasi, tambah ke keranjang (disimpan di `localStorage.cart`).
+3. **Checkout** (`checkout.html`): Render keranjang, pilih metode bayar (`cash` / `qris` / `transfer` / `ewallet`), hitung total, lalu insert ke `orders` + `order_items`. Untuk dine-in, setelah order dibuat frontend memanggil RPC `occupy_table_for_order` untuk mengubah status meja ke `occupied` dan mencatat log di `table_moves`.
+4. **Receipt** (`receipt.html`): Tampilkan struk + `payment_code` + `queue_no`, tombol bayar (link ke `pay.html?code=...`), cetak, dan share.
 
 ### Flow 2: Bayar Pesanan (Payment)
 
 ```
-Landing Page → Pay → Input Code → View Order → Upload Proof (if not cash)
+Landing Page → Pay → Input Kode → Lihat Detail → Ikuti Instruksi Bayar
 ```
 
 **Detail:**
-1. **Pay**: Input payment code (dari struk)
-2. Sistem tampilkan detail order
-3. Jika **cash**: Tampilkan total, bayar di kasir
-4. Jika **QRIS/Transfer**: Upload bukti bayar → Submit ke pending
+1. **Pay** (`pay.html`): Pelanggan input `payment_code` (bisa juga auto-terisi dari query string `?code=...`).
+2. Frontend membaca order dari tabel `orders` dan item dari `order_items` (menggunakan kolom `qty` dan `unit_price`) lalu menampilkan ringkasan pesanan.
+3. Aplikasi membaca konfigurasi pembayaran dari tabel `public.settings` untuk key:
+  - `payment.qris`  → caption + path gambar QRIS
+  - `payment.transfer` → nama bank, nomor rekening, nama pemilik
+  - `payment.ewallet` → provider, nomor e-wallet, nama akun
+4. Instruksi bayar yang tampil menyesuaikan metode pada order:
+  - **cash**: Tampilkan total, instruksi bayar langsung di kasir (tanpa upload bukti).
+  - **qris**: Tampilkan gambar QRIS + caption.
+  - **transfer**: Tampilkan detail rekening + tombol "Salin".
+  - **ewallet**: Tampilkan nomor e-wallet + tombol "Salin" (default tanpa upload bukti).
+5. Jika metode adalah **QRIS/Transfer** dan order belum dibayar, user bisa upload bukti bayar (gambar). File diupload ke bucket `payment-proofs`, lalu URL-nya disimpan ke `orders.proof_url` melalui RPC `update_order_proof_url` (tidak langsung menyentuh tabel `payments`).
 
 ### Flow 3: Lihat Antrian (Queue)
 
@@ -161,16 +112,21 @@ Landing Page → Queue → Realtime Board
 ## 💾 Database Schema Summary
 
 ### Tables Used:
-- **orders**: Pesanan pelanggan (dengan `payment_code`, `queue_no`, `guest_name`, `contact`, `table_no`)
-- **order_items**: Item dalam pesanan
-- **payments**: Pembayaran (status: pending/success/failed)
-- **menus**: Daftar menu
+- **orders**: Pesanan pelanggan (dengan `payment_code`, `queue_no`, `guest_name`, `contact`, `table_no`, `proof_url`)
+- **order_items**: Item dalam pesanan (`qty`, `unit_price`, `note`)
+- **tables**: Manajemen meja (label, capacity, status `empty/occupied/reserved/blocked`)
+- **table_moves**: Log perpindahan/occupancy meja per order
+- **menus**: Daftar menu (dengan `image_path` untuk Supabase Storage)
 - **categories**: Kategori menu
+- **settings**: Key-value konfigurasi (digunakan untuk pengaturan pembayaran QRIS/transfer/e-wallet)
+- **payments** (opsional / lama): Tabel pembayaran historis jika dipakai oleh backend/admin.
 
 ### Key Features:
 - **payment_code**: Auto-generated unique code (WMG-XXXXXX)
 - **queue_no**: Auto-generated daily queue number
-- **RPC get_free_tables**: Query meja kosong untuk dine-in
+- **Table management**: Enum `public.table_status` + tabel `tables` + `table_moves` + RPC `occupy_table_for_order`.
+- **RPC get_free_tables**: Query meja/meja label yang masih kosong untuk dine-in.
+- **Payment settings**: Tabel `settings` menyimpan JSON konfigurasi `payment.qris`, `payment.transfer`, `payment.ewallet`.
 - **View vw_queue_today**: Antrian hari ini (exclude completed/canceled)
 
 ### State Machine:
@@ -181,103 +137,5 @@ placed → paid → confirmed → prep → ready → served → completed
 
 ---
 
-## 🔧 Customization
 
-### Ganti Jumlah Meja
-Edit file `order-start.js`:
-```javascript
-supabase.rpc('get_free_tables', { max_table: 20 }) // Default: 10
-```
 
-### Ganti Warna Tema
-Edit file `base.css`:
-```css
-:root {
-  --primary: #f97316;        /* Warna utama (orange) */
-  --primary-dark: #ea580c;   /* Warna hover */
-  /* ... */
-}
-```
-
-### Tambah Menu via SQL
-```sql
-INSERT INTO public.menus (id, category_id, name, description, price, image_url, is_active)
-VALUES ('menu-xxx', 'cat-001', 'Nama Menu', 'Deskripsi', 15000, 'https://...', true);
-```
-
----
-
-## 🧪 Testing Checklist
-
-- [ ] Landing page menampilkan 3 tombol
-- [ ] Order-start memuat meja kosong (dine-in)
-- [ ] Validasi: minimal nama ATAU kontak harus diisi
-- [ ] Menu menampilkan gambar & chatbot rekomendasi
-- [ ] Keranjang tersimpan di localStorage
-- [ ] Checkout berhasil create order + order_items
-- [ ] Receipt menampilkan payment_code & queue_no
-- [ ] Pay page: input code → tampilkan order
-- [ ] Upload bukti bayar (QRIS/Transfer) ke storage
-- [ ] Queue page: realtime updates saat admin ubah status
-- [ ] Tombol share WhatsApp bekerja
-- [ ] Tombol cetak (window.print) bekerja
-- [ ] Responsive di mobile & desktop
-
----
-
-## 🐛 Troubleshooting
-
-### Error: "Kode pembayaran tidak ditemukan"
-- Pastikan trigger `set_payment_code` sudah dibuat
-- Cek apakah order memiliki kolom `payment_code`
-
-### Error: "Gagal memuat meja"
-- Pastikan RPC function `get_free_tables` sudah dibuat
-- Cek RLS policy untuk anonymous user
-
-### Realtime tidak update
-- Pastikan Realtime enabled di Supabase Dashboard (Database > Replication)
-- Cek browser console untuk error
-
-### Upload bukti gagal
-- Pastikan bucket `payment-proofs` sudah dibuat
-- Cek storage policy untuk anon user
-- Maksimal file size: 5MB
-
-### Menu tidak muncul
-- Cek apakah data seed sudah dijalankan
-- Pastikan `menus.is_active = true`
-- Cek RLS policy: `web_select_orders`
-
----
-
-## 📱 Browser Support
-
-- ✅ Chrome/Edge (latest)
-- ✅ Firefox (latest)
-- ✅ Safari (latest)
-- ✅ Mobile browsers (iOS Safari, Chrome Android)
-
----
-
-## 📄 License
-
-MIT License - Free to use and modify
-
----
-
-## 🤝 Contributing
-
-Silakan buat pull request atau laporkan issue di repository ini.
-
----
-
-## 📞 Support
-
-Jika ada pertanyaan atau masalah, silakan buat issue di GitHub repo.
-
----
-
-**Dibuat dengan ❤️ untuk WarmindoGenz**
-
-Selamat mencoba! 🎉
